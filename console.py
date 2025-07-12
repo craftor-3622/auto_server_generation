@@ -1,7 +1,9 @@
 import sys
+import re
+import subprocess
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QGridLayout, QWidget
 
-class MyApp(QWidget):
+class ServerWidget(QWidget):
 
     def __init__(self):
         super().__init__()
@@ -25,7 +27,11 @@ class MyApp(QWidget):
         grid.addWidget(startBtn, 0, 0)
         grid.addWidget(breakBtn, 1, 0)
         grid.addWidget(quitBtn, 2, 0)
+        
+        startBtn.clicked.connect(self.start_server)
+        breakBtn.clicked.connect(self.stop_server)
         quitBtn.clicked.connect(self.close)
+        
 
         self.setWindowTitle('FastAPI Server Console')
         self.resize(400, 200)
@@ -39,8 +45,30 @@ class MyApp(QWidget):
         qr.moveCenter(cp)
         self.move(qr.topLeft())
 
+    def start_server(self):
+        subprocess.Popen('uvicorn main:app --reload', shell=True)
+
+    def stop_server(self, port=8000):
+        try:
+            # 포트를 사용하는 PID 조회
+            result = subprocess.check_output(f'netstat -ano | findstr :{port}', shell=True)
+            lines = result.decode().splitlines()
+
+            print(1)
+
+            pids = set()
+            for line in lines:
+                match = re.search(r'\s+(\d+)$', line.strip())
+                if match:
+                    pids.add(match.group(1))
+                    
+            for pid in pids:
+                subprocess.run(f'taskkill /PID {pid} /F', shell=True)
+                print(f"Killed PID {pid} on port {port}")
+        except subprocess.CalledProcessError:
+            print(f"No process is using port {port}")
 
 if __name__ == '__main__':
    app = QApplication(sys.argv)
-   ex = MyApp()
+   ex = ServerWidget()
    sys.exit(app.exec_())
